@@ -2,7 +2,8 @@
 #include <iomanip>
 #include <iostream>
 #include <stdlib.h>
-#include <pthread.h>
+#include <thread>
+
 
 #define sqr(x) ((x) * (x))
 #define DEFAULT_NUMBER_OF_POINTS "1000000000"
@@ -10,7 +11,7 @@
 #define DEFAULT_B "1"
 #define DEFAULT_RANDOM_SEED "1"
 #define DEFAULT_THREADS "1"
-#define nullptr __nullptr
+#define nullptr nullptr
 
 struct thread_args{
     unsigned long n_points;
@@ -25,13 +26,6 @@ struct thread_args{
 std::atomic<unsigned long> curve_points;
 uint c_const = (uint)RAND_MAX + (uint)1;
 
-
-void pthread_join(unsigned int n,pthread_t *ptids) {
-  for(int i =0; i < n; i++){
-    pthread_join(ptids[i],nullptr);
-  }
-//   std::cout<<"Joined Thread"<<std::endl;
-}
 
 inline double get_random_coordinate(uint *random_seed) {
   return ((double)rand_r(random_seed)) / c_const;  // thread-safe random number generator
@@ -69,7 +63,7 @@ void curve_area_calculation_serial(unsigned long n, float a, float b, uint r_see
   uint random_seed = r_seed;
   uint each_thread_points = n/n_threads;
   curve_points = 0;
-  pthread_t *ptids = new pthread_t [n_threads]; 
+  std::vector<std::thread> all_threads(n_threads);
   thread_args *all_arguments = new thread_args [n_threads]; 
 
 //   std::cout <<"Each thread will make "<< each_thread_points <<" points"<<std::endl;
@@ -83,11 +77,15 @@ void curve_area_calculation_serial(unsigned long n, float a, float b, uint r_see
     all_arguments[i].time_taken = 0;
     all_arguments[i].local_curve_points = 0;
     // std::cout<<"Making thread "<<i<<std::endl;
-    pthread_create(&ptids[i], NULL, get_points_in_curve, (void*)&all_arguments[i]);
+    std::thread new_thread(get_points_in_curve,(void*)&all_arguments[i]);
+    all_threads.push_back(std::move(new_thread));
   }
 
-    pthread_join(n_threads, ptids);
-    // std::cout<<"Done joining all threads "<<std::endl;
+     for (auto& thread : all_threads) {
+        if (thread.joinable()) {
+            thread.join();
+        }
+    }
 
 //   unsigned long curve_points = get_points_in_curve(n, r_seed, a, b);
   

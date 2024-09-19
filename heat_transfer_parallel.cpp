@@ -11,7 +11,7 @@
 #define DEFAULT_CY "1"
 #define DEFAULT_TIME_STEPS "1000"
 #define DEFAULT_MIDDLE_TEMP "600"
-#define nullptr __nullptr
+#define nullptr nullptr
 
 
 CustomBarrier *barrier = nullptr;
@@ -81,23 +81,21 @@ struct thread_args {
     uint size;
     uint start;
     uint end;
-    double *time_taken;
+    double time_taken;
     TemperatureArray* T;
     uint steps;
 };
 
 inline void heat_transfer_calculation(thread_args *all_arguments) {
-//   thread_args *all_arguments = (thread_args *) _all_arguments;
-  std::cout<<"Inside heat_transfer"<<std::endl;
+  // std::cout<<"Inside heat_transfer"<<std::endl;
   uint tid = all_arguments->tid;
   uint size = all_arguments->size;
   uint start = all_arguments->start;
   uint end = all_arguments->end;
-  double *time_taken = all_arguments->time_taken;
   TemperatureArray* T = all_arguments->T;
   uint steps = all_arguments->steps;
-  timer t1;
-  t1.start();
+  timer local;
+  local.start();
   uint stepcount;
   for (stepcount = 1; stepcount <= steps; stepcount ++) {
 	  for (uint x = start; x <= end; x++) {
@@ -106,21 +104,20 @@ inline void heat_transfer_calculation(thread_args *all_arguments) {
 		  }
 	  }
     //barrier wait
-    std::cout<<"Barrier wait 1: Thread "<< tid<<std::endl;
     barrier->wait();
+
     if (tid == 0) {
-        std::cout<<"Thread 0 is inside"<<std::endl;
         // thread 0 should swap arrays. This is the only thread in the serial version
             T->SwapArrays();
             T->IncrementStepCount();
+            barrier->wait();
         }
     else {  
         // other threads should wait until swap is complete
-            std::cout<<"Barrier wait 2, Thread:"<<tid<<std::endl;
             barrier->wait();
         }
     }  // end of current step
-    *time_taken = t1.stop(); //loop ends
+    all_arguments->time_taken = local.stop(); //loop ends
 }
 
 void heat_transfer_calculation_serial(uint size, uint number_of_threads, TemperatureArray* T, uint steps) {
@@ -163,30 +160,25 @@ void heat_transfer_calculation_serial(uint size, uint number_of_threads, Tempera
       all_arguments[i].steps = steps;
       all_arguments[i].T  = T;
       all_arguments[i].tid = i;
-      all_arguments[i].time_taken = 0;
-      std::cout<<"Making thread "<<i<<std::endl;
+      all_arguments[i].time_taken = 0.0;
       std::thread new_thread(heat_transfer_calculation,&(all_arguments[i]));
+
       all_threads.push_back(std::move(new_thread));
-    //   pthread_create(&ptids[i], NULL, heat_transfer_calculation, all_arguments[i]));
-    //   heat_transfer_calculation (0, size, startx[0], endx[0], &time_taken, T, steps);
   }
-  std::cout<<"Total number of threads "<<all_threads.size()<<std::endl;
+  // std::cout<<"Total number of threads "<<all_threads.size()<<std::endl;
 
-
-  for(int i=0; i < number_of_threads; i++){
-      std::cout<<"Joining threads"<<std::endl;
-      if(all_threads.at(i).joinable()){
-          all_threads.at(i).join();
-      }
-      
-  }
-    std::cout<<"Done Joining threads"<<std::endl;
-
-
+  for (auto& thread : all_threads) {
+        if (thread.joinable()) {
+            thread.join();
+        }
+    }
+    // std::cout<<"Done Joining threads"<<std::endl;
   // Print these statistics for each thread 
-  std::cout << "thread_id, start_column, end_column, time_taken\n";
-  std::cout << "0, 0, " << size-1 << ", " << std::setprecision(TIME_PRECISION)
-              << time_taken<< "\n";
+    std::cout << "thread_id, start_column, end_column, time_taken\n";
+  for(int i=0;i<number_of_threads;i++){
+    std::cout << i<<", "<<all_arguments[i].start<<", "<<all_arguments[i].end<<", "<<all_arguments[i].time_taken<<"\n";
+  }
+ 
   
   uint step = size/6;
   uint position = 0;
@@ -205,6 +197,7 @@ void heat_transfer_calculation_serial(uint size, uint number_of_threads, Tempera
 
   std::cout << "Time taken (in seconds) : " << std::setprecision(TIME_PRECISION)
             << time_taken << "\n";
+  delete all_arguments;
 }
 
 int main(int argc, char *argv[]) {
@@ -250,10 +243,11 @@ int main(int argc, char *argv[]) {
       std::cout << "Cannot Initialize Temperature Array...Terminating" << std::endl;
       return 2;
   }
-  barrier = new CustomBarrier(n_threads);
+  barrier = new CustomBarrier((int)n_threads);
   heat_transfer_calculation_serial (grid_size, n_threads, T, steps);
 
-
   delete T;
+  delete barrier;
+
   return 0;
 }
