@@ -58,21 +58,25 @@ void * get_points_in_curve(void *arguments) {
 
 void curve_area_calculation_serial(unsigned long n, float a, float b, uint r_seed, uint n_threads) {
   timer serial_timer;
-  serial_timer.start();
+  
   double time_taken = 0;
   uint random_seed = r_seed;
   uint each_thread_points = n/n_threads;
+  uint remainder = n % n_threads;
   curve_points = 0;
   std::vector<std::thread> all_threads(n_threads);
   thread_args *all_arguments = new thread_args [n_threads]; 
 
 //   std::cout <<"Each thread will make "<< each_thread_points <<" points"<<std::endl;
-
+  serial_timer.start();
 
   for(int i=0; i<n_threads; i++){
     all_arguments[i].a = a;
     all_arguments[i].b = b;
     all_arguments[i].n_points = each_thread_points;
+    if(i == 0){
+      all_arguments[i].n_points += remainder;
+    }
     all_arguments[i].random_seed = r_seed + i;
     all_arguments[i].time_taken = 0;
     all_arguments[i].local_curve_points = 0;
@@ -96,7 +100,7 @@ void curve_area_calculation_serial(unsigned long n, float a, float b, uint r_see
   
   std::cout << "thread_id, points_generated, curve_points, time_taken\n";
   for (int i = 0; i < n_threads; i++){
-    std::cout<< i+1 <<", " << each_thread_points << ", " <<std::fixed << std::setprecision(0) << all_arguments[i].local_curve_points
+    std::cout<< i+1 <<", " << all_arguments[i].n_points << ", " <<std::fixed << std::setprecision(0) << all_arguments[i].local_curve_points
     << ", " << std::setprecision(TIME_PRECISION) << all_arguments[i].time_taken << "\n";
   }
   // std::cout << "1, " << n << ", "
@@ -137,6 +141,7 @@ int main(int argc, char *argv[]) {
   uint nThreads = cl_options["nThreads"].as<uint>();
 
   std::cout << "Number of points : " << n_points << "\n";;
+  std::cout << "Number of threads : " << nThreads << "\n";;
   std::cout << "A : " << a << "\n" << "B : " << b << "\n";
   std::cout << "Random Seed : " << r_seed << "\n";
 
