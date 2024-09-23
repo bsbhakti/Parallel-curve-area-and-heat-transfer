@@ -59,10 +59,13 @@ public:
 	uint ReadStepCount() { return(step); };
 
 	void ComputeNewTemp(uint x, uint y) {
+    double prev1 = read(PrevArray,x,y);
+    double prev2 = read(PrevArray,x-1,y);
+    double prev3 = read(PrevArray,x,y-1);
+    double prev4 = read(PrevArray,x,y+1);
+    double prev5 = read(PrevArray,x+1,y);
 		if ((x > 0) && (x < size-1) && (y > 0) && (y < size-1))
-			assign(CurrArray, x, y , read(PrevArray,x,y)	
-				+ Cx * (read(PrevArray, x-1, y) + read(PrevArray, x+1, y) - 2*read(PrevArray, x, y)) 
-				+ Cy * (read(PrevArray, x, y-1) + read(PrevArray, x, y+1) - 2*read(PrevArray, x, y)));
+			assign(CurrArray, x, y , prev1	+ Cx * (prev2 + prev5 - 2*prev1) + Cy * (prev3 + prev4 - 2*prev1));
 	};
 
 	void SwapArrays() {
@@ -196,7 +199,7 @@ void heat_transfer_calculation_serial(uint size, uint number_of_threads, Tempera
 
   std::cout << "Time taken (in seconds) : " << std::setprecision(TIME_PRECISION)
             << time_taken << "\n";
-  delete all_arguments;
+  delete [] all_arguments;
 }
 
 int main(int argc, char *argv[]) {
