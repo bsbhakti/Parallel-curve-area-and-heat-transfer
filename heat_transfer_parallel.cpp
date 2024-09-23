@@ -162,7 +162,6 @@ void heat_transfer_calculation_serial(uint size, uint number_of_threads, Tempera
       all_arguments[i].tid = i;
       all_arguments[i].time_taken = 0.0;
       std::thread new_thread(heat_transfer_calculation,&(all_arguments[i]));
-
       all_threads.push_back(std::move(new_thread));
   }
   // std::cout<<"Total number of threads "<<all_threads.size()<<std::endl;
@@ -173,7 +172,7 @@ void heat_transfer_calculation_serial(uint size, uint number_of_threads, Tempera
         }
     }
     // std::cout<<"Done Joining threads"<<std::endl;
-  // Print these statistics for each thread 
+  // Print these statistics foall_argumentsr each thread 
     std::cout << "thread_id, start_column, end_column, time_taken\n";
   for(int i=0;i<number_of_threads;i++){
     std::cout << i<<", "<<all_arguments[i].start<<", "<<all_arguments[i].end<<", "<<all_arguments[i].time_taken<<"\n";

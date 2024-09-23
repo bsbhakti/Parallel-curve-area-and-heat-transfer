@@ -19,11 +19,11 @@ struct thread_args{
     float a;
     float b;
     double time_taken;
-    double local_curve_points;
+    unsigned long local_curve_points;
 } ;
 
 
-std::atomic<unsigned long> curve_points;
+// std::atomic<unsigned long> curve_points;
 uint c_const = (uint)RAND_MAX + (uint)1;
 
 
@@ -50,9 +50,10 @@ void * get_points_in_curve(void *arguments) {
        if ((a*sqr(x_coord) + b*sqr(sqr(y_coord))) <= 1.0)
        curve_count++;
   }
-    curve_points +=  curve_count;
+    // curve_points +=  curve_count;
     args->local_curve_points = curve_count;
     args->time_taken = serial_timer.stop();
+    // std::cout<<"point in"<< args->local_curve_points<<std::endl;
     return nullptr;
 }
 
@@ -63,7 +64,7 @@ void curve_area_calculation_serial(unsigned long n, float a, float b, uint r_see
   uint random_seed = r_seed;
   uint each_thread_points = n/n_threads;
   uint remainder = n % n_threads;
-  curve_points = 0;
+  unsigned long  curve_points = 0;
   std::vector<std::thread> all_threads(n_threads);
   thread_args *all_arguments = new thread_args [n_threads]; 
 
@@ -91,7 +92,9 @@ void curve_area_calculation_serial(unsigned long n, float a, float b, uint r_see
         }
     }
 
-//   unsigned long curve_points = get_points_in_curve(n, r_seed, a, b);
+    for (long i = 0; i < n_threads; i++){
+      curve_points += all_arguments[i].local_curve_points;
+    }
   
     double area_value = 4.0 * (double)curve_points / (double)n;
     time_taken = serial_timer.stop();
@@ -103,9 +106,6 @@ void curve_area_calculation_serial(unsigned long n, float a, float b, uint r_see
     std::cout<< i+1 <<", " << all_arguments[i].n_points << ", " <<std::fixed << std::setprecision(0) << all_arguments[i].local_curve_points
     << ", " << std::setprecision(TIME_PRECISION) << all_arguments[i].time_taken << "\n";
   }
-  // std::cout << "1, " << n << ", "
-  //             << curve_points << ", " << std::setprecision(TIME_PRECISION)
-  //             << time_taken << "\n";
 
   std::cout << "Total points generated : " << n << "\n";
   std::cout << "Total points in curve : " << curve_points << "\n";
@@ -113,6 +113,7 @@ void curve_area_calculation_serial(unsigned long n, float a, float b, uint r_see
             << "\n";
   std::cout << "Time taken (in seconds) : " << std::setprecision(TIME_PRECISION)
             << time_taken << "\n";
+  delete all_arguments;
 }
 
 int main(int argc, char *argv[]) {
